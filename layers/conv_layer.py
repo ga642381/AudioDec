@@ -142,13 +142,15 @@ class CausalConv1d(NonCausalConv1d):
         return self.conv(x)
     
     def inference(self, x):
+        if self.pad_buffer.shape[0] == 1 and x.shape[0] > 1:
+            self.pad_buffer = self.pad_buffer.expand(x.shape[0], -1, -1)
         x = torch.cat((self.pad_buffer, x), -1)
         self.pad_buffer = x[:, :, -self.pad_length:]
         return self.conv(x)
     
     def reset_buffer(self):
-        self.pad_buffer.zero_()
-
+        batch, in_channels, pad_length = self.pad_buffer.shape
+        self.pad_buffer = torch.zeros(1, in_channels, pad_length).to(self.pad_buffer)
         
 class CausalConvTranspose1d(NonCausalConvTranspose1d):
     """1D causal transpose convloution."""
@@ -183,9 +185,12 @@ class CausalConvTranspose1d(NonCausalConvTranspose1d):
         return self.deconv(x)[:, :, self.stride : -self.stride]
     
     def inference(self, x):
+        if self.pad_buffer.shape[0] == 1 and x.shape[0] > 1:
+            self.pad_buffer = self.pad_buffer.expand(x.shape[0], -1, -1)
         x = torch.cat((self.pad_buffer, x), -1)
         self.pad_buffer = x[:, :, -self.pad_length:]
         return self.deconv(x)[:, :, self.stride : -self.stride]
     
     def reset_buffer(self):
-        self.pad_buffer.zero_()
+        batch, in_channels, pad_length = self.pad_buffer.shape
+        self.pad_buffer = torch.zeros(1, in_channels, pad_length).to(self.pad_buffer)
